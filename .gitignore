@@ -1,0 +1,12 @@
+# Bicep-relaterade artefakter
+.bicep/
+*.json
+!main.parameters.json
+
+# Editor & OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Lokal Azure CLI / azd-state om det dyker upp
+.azure/
