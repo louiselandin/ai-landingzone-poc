@@ -1,20 +1,20 @@
 // ============================================================================
 // identity.bicep — User-assigned Managed Identity
 // ----------------------------------------------------------------------------
-// Vad: Skapar en user-assigned managed identity (UAMI).
-// Varför: Container Appen i steg 2 binder den här identiteten till sig och
-//         autentiserar mot Foundry, Storage, Key Vault och ACR med den.
-//         En UAMI är "portabel" — den överlever om vi river och deployar
-//         om appen, vilket gör att RBAC-rolltilldelningar (som tar
-//         minuter att propagera) bara behöver göras en gång.
-// Pedagogisk not: Skillnad mot system-assigned: en SAMI lever och dör med
-//                 sin förälder-resurs. En UAMI lever fristående och kan
-//                 bindas till flera resurser. För landing zones är UAMI
-//                 nästan alltid rätt val.
+// What: Creates a user-assigned managed identity (UAMI).
+// Why: The Container App in step 2 binds to this identity and uses it to
+//      authenticate to Foundry, Storage, Key Vault, and ACR. A UAMI is
+//      "portable" — it survives app deletion and redeployment, so RBAC role
+//      assignments (which can take minutes to propagate) only need to be
+//      created once.
+// Educational note: Unlike a system-assigned managed identity, a SAMI lives
+//                    and dies with its parent resource. A UAMI exists
+//                    independently and can be bound to multiple resources.
+//                    UAMIs are almost always the right choice for landing zones.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Name of the user-assigned managed identity.')
@@ -27,7 +27,7 @@ param location string
 param tags object
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {

@@ -1,17 +1,18 @@
 // ============================================================================
 // containerRegistry.bicep — Azure Container Registry (ACR)
 // ----------------------------------------------------------------------------
-// Vad: Skapar ett ACR av SKU Basic utan admin user (alltså bara Entra-
-//      autentisering). Skickar diagnostik till Log Analytics.
-// Varför: Container App-imagen i steg 2 behöver lagras någonstans. ACR är
-//         standardvalet och integrerar med Container Apps via AcrPull-rollen
-//         på den managed identity som binds till appen.
-// Pedagogisk not: Basic-SKU räcker för PoC. För prod-workloads med många
-//                 läsare eller geo-replikering vill man ha Premium.
+// What: Creates a Basic SKU ACR without an admin user (Entra authentication
+//       only). Sends diagnostics to Log Analytics.
+// Why: The Container App image in step 2 needs to be stored somewhere. ACR is
+//      the standard choice and integrates with Container Apps through the
+//      AcrPull role on the managed identity bound to the app.
+// Educational note: The Basic SKU is sufficient for a PoC. Premium is
+//                    preferable for production workloads with many readers
+//                    or geo-replication.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('ACR name (5-50 chars, lowercase + digits).')
@@ -29,7 +30,7 @@ param tags object
 param logAnalyticsWorkspaceId string
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
@@ -40,7 +41,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
     name: 'Basic'
   }
   properties: {
-    // Ingen admin user — vi tvingar Entra/Managed Identity (AcrPull-rollen).
+    // No admin user — enforce Entra/Managed Identity (AcrPull role).
     adminUserEnabled: false
     publicNetworkAccess: 'Enabled'
     anonymousPullEnabled: false

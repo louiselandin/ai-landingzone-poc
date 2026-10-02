@@ -1,29 +1,29 @@
 // ============================================================================
-// main.bicep — AI Landing Zone (orkestrator)
+// main.bicep — AI Landing Zone (orchestrator)
 // ----------------------------------------------------------------------------
-// Den här filen är "plattformen" i en plattform-vs-workload-uppdelning. Den
-// skapar en resursgrupp och alla generiska, återanvändbara resurser som en
-// AI-applikation typiskt behöver:
+// This file is the "platform" in a platform-vs-workload separation. It
+// creates a resource group and the generic, reusable resources typically
+// needed by an AI application:
 //   • Monitoring (Log Analytics + Application Insights)
-//   • Storage Account (med en blob-container)
-//   • Key Vault (RBAC-läge)
-//   • Azure AI Foundry-konto + projekt + modelldeployments
+//   • Storage Account (with a blob container)
+//   • Key Vault (RBAC mode)
+//   • Azure AI Foundry account + project + model deployments
 //   • Azure Container Registry
-//   • Azure Container Apps Environment (utan själva appen)
-//   • En user-assigned managed identity för appen i steg 2
-//   • Role assignments som ger identiteten rätt att läsa allt ovan
+//   • Azure Container Apps Environment (without the app itself)
+//   • A user-assigned managed identity for the app in step 2
+//   • Role assignments that grant the identity access to the resources above
 //
-// Själva applikationen (Container App + eventuella appspecifika resurser)
-// deployas separat i "steg 2" och konsumerar outputs från denna deployment.
+// The application itself (Container App and any app-specific resources) is
+// deployed separately in "step 2" and consumes outputs from this deployment.
 // ============================================================================
 
 targetScope = 'subscription'
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
-@description('Short name of the workload. Used in every resource name, so keep it lowercase, unique-enough (some resources are globally unique — include a team/tenant marker if needed) and 3-16 chars. Example: "branslefakturor".')
+@description('Short, non-identifying name of the workload. Used in every resource name; choose a globally unique value without personal or customer information. 3-16 lowercase letters or digits. Example: "exampleworkload".')
 @minLength(3)
 @maxLength(16)
 param workloadName string
@@ -52,19 +52,19 @@ param tags object = {
 }
 
 // ----------------------------------------------------------------------------
-// Variabler — namnstandard
+// Variables — naming convention
 // ----------------------------------------------------------------------------
-// Mönster: alla resurser namnges som "{prefix}-{workloadName}-{environment}",
-// eller "{prefix}{workloadName}{environment}" för resurser med strikta regler
-// (Storage Account, Container Registry — bara små bokstäver och siffror,
-// inga bindestreck). Inga hashar — namnen ska vara läsbara för människor.
+// Pattern: resources are named "{prefix}-{workloadName}-{environment}", or
+// "{prefix}{workloadName}{environment}" for resources with strict rules
+// (Storage Account, Container Registry — lowercase letters and digits only,
+// no hyphens). No hashes — names should be human-readable.
 //
-// OBS: Storage Account, Key Vault, Container Registry och Foundrys
-// customSubDomainName är GLOBALT unika i Azure. Välj ett workloadName
-// som är unikt nog (t.ex. "acme-fuelinv" snarare än bara "test").
+// NOTE: The Storage Account, Key Vault, Container Registry, and Foundry's
+// customSubDomainName must be globally unique in Azure. Choose an available,
+// non-identifying workloadName (for example, "exampleworkload").
 
-var nameSuffix = '${workloadName}-${environment}'   // för bindestreck-namn
-var nameSuffixCompact = '${workloadName}${environment}' // för strikta namn
+var nameSuffix = '${workloadName}-${environment}'   // for hyphenated names
+var nameSuffixCompact = '${workloadName}${environment}' // for strict names
 
 var resourceGroupName = 'rg-${nameSuffix}'
 
@@ -81,7 +81,7 @@ var names = {
 }
 
 // ----------------------------------------------------------------------------
-// Resursgrupp
+// Resource group
 // ----------------------------------------------------------------------------
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -91,9 +91,9 @@ resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
 }
 
 // ----------------------------------------------------------------------------
-// Moduler — anropas i ordning så att beroenden är tydliga
+// Modules — called in order to make dependencies clear
 // ----------------------------------------------------------------------------
-// Monitoring först — alla andra moduler skickar diagnostik dit.
+// Monitoring first — all other modules send diagnostics there.
 
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
@@ -106,8 +106,8 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
-// Storage, Key Vault, Container Registry och Foundry kan deployas parallellt
-// — de har inga inbördes beroenden, bara på monitoring.
+// Storage, Key Vault, Container Registry, and Foundry can be deployed in
+// parallel — they have no dependencies on each other, only on monitoring.
 
 module storage 'modules/storage.bicep' = {
   name: 'storage'
@@ -158,8 +158,8 @@ module foundry 'modules/foundry.bicep' = {
   }
 }
 
-// Container Apps Environment behöver Log Analytics-nyckeln (delad nyckel) —
-// modulen läser den via en `existing`-referens.
+// The Container Apps Environment needs the Log Analytics workspace shared
+// key — the module reads it through an `existing` reference.
 
 module containerAppsEnv 'modules/containerAppsEnv.bicep' = {
   name: 'containerAppsEnv'
@@ -172,7 +172,7 @@ module containerAppsEnv 'modules/containerAppsEnv.bicep' = {
   }
 }
 
-// Managed Identity är fristående — appen i steg 2 binder den till sin Container App.
+// The Managed Identity is independent — the app in step 2 binds it to its Container App.
 
 module identity 'modules/identity.bicep' = {
   name: 'identity'
@@ -184,7 +184,7 @@ module identity 'modules/identity.bicep' = {
   }
 }
 
-// RBAC sist — alla målresurser måste existera först.
+// RBAC last — all target resources must exist first.
 
 module rbac 'modules/rbac.bicep' = {
   name: 'rbac'
@@ -200,7 +200,7 @@ module rbac 'modules/rbac.bicep' = {
 }
 
 // ----------------------------------------------------------------------------
-// Outputs — konsumeras av app-deployen i steg 2
+// Outputs — consumed by the app deployment in step 2
 // ----------------------------------------------------------------------------
 
 output resourceGroupName string = rg.name

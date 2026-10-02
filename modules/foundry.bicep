@@ -1,32 +1,31 @@
 // ============================================================================
-// foundry.bicep — Azure AI Foundry-konto + projekt + modelldeployments
+// foundry.bicep — Azure AI Foundry account + project + model deployments
 // ----------------------------------------------------------------------------
-// Vad: Skapar
-//        1. Ett "Foundry-konto" (Microsoft.CognitiveServices/accounts av
-//           kind 'AIServices') — själva multi-modell-resursen.
-//        2. Modelldeployments för flera GPT- och embedding-modeller.
-//        3. Ett Foundry-projekt under kontot.
-//        4. En Application Insights-koppling så att Foundry-telemetri
-//           strömmar dit.
-//        5. Diagnostic settings till Log Analytics.
-// Varför: Foundry är navet i en AI-applikation. Kontot ger inferens-endpoints
-//         för modellerna; projektet är arbetsytan där agenter, evals och
-//         knowledge connections lever.
-// Pedagogisk not: Foundry-kontot ÄR ett Cognitive Services-konto, bara med
-//                 kind = 'AIServices'. Det är ingen separat plattform — bara
-//                 en Azure-resurs som "fakulterar" en mängd Azure AI-tjänster.
-//                 Modelldeployments måste skapas sekventiellt (race conditions
-//                 vid parallell deployment) — vi använder @batchSize(1).
+// What: Creates:
+//       1. A "Foundry account" (Microsoft.CognitiveServices/accounts with
+//          kind 'AIServices') — the multi-model resource.
+//       2. Model deployments for several GPT and embedding models.
+//       3. A Foundry project under the account.
+//       4. An Application Insights connection to stream Foundry telemetry.
+//       5. Diagnostic settings that send data to Log Analytics.
+// Why: Foundry is the hub of an AI application. The account provides model
+//      inference endpoints; the project is the workspace for agents,
+//      evaluations, and knowledge connections.
+// Educational note: A Foundry account IS a Cognitive Services account with
+//                    kind = 'AIServices'. It is not a separate platform, but
+//                    an Azure resource that brings together multiple Azure AI
+//                    services. Model deployments must be created sequentially
+//                    to avoid race conditions, so @batchSize(1) is used.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Name of the Foundry (AIServices) account.')
 param foundryAccountName string
 
-@description('Name of the Foundry project (e.g. proj-branslefakturor).')
+@description('Name of the Foundry project (e.g. proj-exampleworkload).')
 param foundryProjectName string
 
 @description('Workload name — used for the project displayName/description defaults.')
@@ -59,12 +58,12 @@ param projectDisplayName string = 'Project ${workloadName}'
 param projectDescription string = 'AI Foundry project for workload ${workloadName}.'
 
 // ----------------------------------------------------------------------------
-// Variabler — modelldeployments
+// Variables — model deployments
 // ----------------------------------------------------------------------------
-// En lista som loopas sekventiellt med @batchSize(1) längre ner.
-// TODO: validera versionsnummer mot
+// This list is looped over sequentially with @batchSize(1) below.
+// TODO: Validate model versions against
 //       https://learn.microsoft.com/azure/ai-services/openai/concepts/models
-//       innan deploy i annan region än swedencentral.
+//       before deploying in a region other than swedencentral.
 
 var modelDeployments = [
   {
@@ -75,7 +74,7 @@ var modelDeployments = [
     capacity: modelCapacity
   }
   {
-    // TODO: validera senaste version för o4-mini.
+    // TODO: Validate the latest version for o4-mini.
     name: 'o4-mini'
     modelName: 'o4-mini'
     modelVersion: '2025-04-16'
@@ -86,14 +85,14 @@ var modelDeployments = [
     name: 'text-embedding-3-small'
     modelName: 'text-embedding-3-small'
     modelVersion: '1'
-    // OBS: i swedencentral stöds bara GlobalStandard för embedding-modellerna.
+    // NOTE: Only GlobalStandard is supported for embedding models in swedencentral.
     skuName: 'GlobalStandard'
     capacity: modelCapacity
   }
 ]
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
@@ -108,24 +107,24 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview
     type: 'SystemAssigned'
   }
   properties: {
-    // customSubDomainName krävs för Entra-autentisering. Vi använder
-    // accountname som subdomän — deterministiskt och garanterat unikt
-    // (samma unikhetsgarantier som account-namnet självt).
+    // customSubDomainName is required for Entra authentication. Use the
+    // account name as the subdomain — it is deterministic and guaranteed to
+    // be unique (with the same uniqueness guarantee as the account name).
     customSubDomainName: foundryAccountName
-    // Inga API-nycklar — bara Entra-autentisering.
+    // No API keys — Entra authentication only.
     disableLocalAuth: true
     publicNetworkAccess: 'Enabled'
     networkAcls: {
       defaultAction: 'Allow'
     }
-    // Krävs för att skapa projekt under kontot (Foundry-feature).
+    // Required to create projects under the account (Foundry feature).
     allowProjectManagement: true
   }
 }
 
-// Modelldeployments — @batchSize(1) tvingar Bicep att skapa dem en i taget,
-// vilket undviker race conditions som annars uppstår när man försöker skapa
-// flera deployments parallellt på samma Cognitive Services-konto.
+// Model deployments — @batchSize(1) forces Bicep to create them one at a
+// time, avoiding race conditions that can occur when creating multiple
+// deployments in parallel on the same Cognitive Services account.
 @batchSize(1)
 resource models 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = [for m in modelDeployments: {
   parent: foundryAccount
@@ -140,12 +139,12 @@ resource models 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-pre
       name: m.modelName
       version: m.modelVersion
     }
-    // Default content filter (Microsoft.DefaultV2) appliceras automatiskt
-    // när raiPolicyName utelämnas.
+    // The default content filter (Microsoft.DefaultV2) is applied
+    // automatically when raiPolicyName is omitted.
   }
 }]
 
-// Foundry-projektet — barn till kontot.
+// Foundry project — a child of the account.
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
   parent: foundryAccount
   name: foundryProjectName
@@ -158,16 +157,16 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-0
     displayName: projectDisplayName
     description: projectDescription
   }
-  // Projekt kan skapas direkt — men för läsbarhet väntar vi tills modellerna
-  // är klara. dependsOn behövs inte tekniskt men gör beroendet explicit för
-  // läsaren.
+  // The project can be created immediately, but for readability we wait until
+  // the models are ready. dependsOn is not technically required, but makes
+  // the dependency explicit to the reader.
   dependsOn: [
     models
   ]
 }
 
-// Application Insights-koppling på projekt-nivå. Foundry använder den här
-// kopplingen för att skicka agent-traces och evaluation-resultat till AppI.
+// Project-level Application Insights connection. Foundry uses it to send
+// agent traces and evaluation results to Application Insights.
 resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview' = {
   parent: foundryProject
   name: 'appinsights'
@@ -186,8 +185,8 @@ resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/projects/co
   }
 }
 
-// Diagnostik på kontot — kategorierna Audit och RequestResponse är de mest
-// värdefulla för att felsöka modellanrop.
+// Account diagnostics — the Audit and RequestResponse categories are the
+// most useful for troubleshooting model calls.
 resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: foundryAccount
   name: 'to-loganalytics'
@@ -222,7 +221,7 @@ output foundryAccountName string = foundryAccount.name
 @description('Foundry account resource ID.')
 output foundryAccountId string = foundryAccount.id
 
-@description('Foundry account public endpoint, e.g. https://aif-branslefakturor-demo.cognitiveservices.azure.com/.')
+@description('Foundry account public endpoint, e.g. https://aif-exampleworkload-demo.cognitiveservices.azure.com/.')
 output foundryAccountEndpoint string = foundryAccount.properties.endpoint
 
 @description('Foundry project name.')

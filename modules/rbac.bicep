@@ -1,26 +1,25 @@
 // ============================================================================
-// rbac.bicep — Role assignments för applikationens managed identity
+// rbac.bicep — Role assignments for the application's managed identity
 // ----------------------------------------------------------------------------
-// Vad: Tilldelar fem built-in roller till user-assigned managed identity:n
-//      så att den kan göra exakt det den behöver — inte mer:
-//        • Cognitive Services OpenAI User   → Foundry-kontot
+// What: Assigns five built-in roles to the user-assigned managed identity so
+//       it can do exactly what it needs — no more:
+//        • Cognitive Services OpenAI User   → Foundry account
 //        • Azure AI User                    → Foundry-projektet
 //        • Storage Blob Data Contributor    → Storage Account
 //        • Key Vault Secrets User           → Key Vault
 //        • AcrPull                          → Container Registry
-// Varför: Plattformen äger rolltilldelningarna så att appen i steg 2 kan
-//         fokusera på sin egen kod — den ärver redan rätt åtkomst via
-//         identitetsbindningen.
-// Pedagogisk not: roleAssignments måste ha ett deterministiskt GUID-namn
-//                 för att vara idempotenta. Mönstret guid(scope, principal,
-//                 role) ger samma namn varje gång — ingen "duplicate role
-//                 assignment"-error vid omdeploy.
-//                 Den som kör deployen måste själv ha User Access
-//                 Administrator (eller Owner) på resursgruppen.
+// Why: The platform owns role assignments so the app in step 2 can focus on
+//      its own code — it inherits the right access through its identity binding.
+// Educational note: roleAssignments need a deterministic GUID name to be
+//                    idempotent. The guid(scope, principal, role) pattern
+//                    returns the same name every time, avoiding "duplicate
+//                    role assignment" errors on redeployment.
+//                    The person running the deployment must have User Access
+//                    Administrator (or Owner) on the resource group.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Object/principal ID of the managed identity to grant roles to.')
@@ -42,9 +41,9 @@ param keyVaultName string
 param acrName string
 
 // ----------------------------------------------------------------------------
-// Variabler — built-in role definition IDs
+// Variables — built-in role definition IDs
 // ----------------------------------------------------------------------------
-// Källa: https://learn.microsoft.com/azure/role-based-access-control/built-in-roles
+// Source: https://learn.microsoft.com/azure/role-based-access-control/built-in-roles
 
 var roleIds = {
   cognitiveServicesOpenAiUser:  '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
@@ -55,7 +54,7 @@ var roleIds = {
 }
 
 // ----------------------------------------------------------------------------
-// Existerande resurser — vi tilldelar roller på dem som scope
+// Existing resources — roles are assigned at their scope
 // ----------------------------------------------------------------------------
 
 resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
@@ -80,7 +79,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existin
 }
 
 // ----------------------------------------------------------------------------
-// Rolltilldelningar
+// Role assignments
 // ----------------------------------------------------------------------------
 
 resource roleAssignmentFoundryAccount 'Microsoft.Authorization/roleAssignments@2022-04-01' = {

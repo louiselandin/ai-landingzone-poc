@@ -1,20 +1,20 @@
 // ============================================================================
 // monitoring.bicep — Log Analytics + Application Insights
 // ----------------------------------------------------------------------------
-// Vad: Skapar en Log Analytics workspace och en workspace-baserad Application
-//      Insights-instans kopplad till den.
-// Varför: I en AI Landing Zone är observability fundamentalt. Foundry,
-//         Container Apps, Storage, Key Vault och ACR skickar alla diagnostik
-//         till samma workspace, vilket ger en enda plats att felsöka i KQL.
-//         Application Insights används av själva applikationen i steg 2 för
-//         traces, metrics och Foundry-telemetri.
-// Pedagogisk not: "Workspace-baserad" AppInsights betyder att data lagras i
-//                 Log Analytics istället för en egen separat databas. Det är
-//                 nya standarden sedan 2020.
+// What: Creates a Log Analytics workspace and a workspace-based Application
+//       Insights instance connected to it.
+// Why: Observability is fundamental to an AI landing zone. Foundry, Container
+//      Apps, Storage, Key Vault, and ACR all send diagnostics to the same
+//      workspace, providing one place to troubleshoot with KQL. The
+//      application in step 2 uses Application Insights for traces, metrics,
+//      and Foundry telemetry.
+// Educational note: Workspace-based Application Insights stores data in
+//                    Log Analytics instead of a separate database. This has
+//                    been the standard since 2020.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Name of the Log Analytics workspace.')
@@ -30,7 +30,7 @@ param location string
 param tags object
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -41,8 +41,9 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
     sku: {
       name: 'PerGB2018'
     }
-    // 30 dagar är default-retention och räcker gott för en PoC. För prod
-    // kan man vilja höja till 90+ dagar och länka en dedikerad arkivlagring.
+    // 30 days is the default retention and is sufficient for a PoC. For
+    // production, consider increasing it to 90+ days and linking dedicated
+    // archive storage.
     retentionInDays: 30
     features: {
       enableLogAccessUsingOnlyResourcePermissions: true
@@ -57,7 +58,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
-    // Workspace-baserad AppInsights — data hamnar i Log Analytics ovan.
+    // Workspace-based Application Insights — data is stored in Log Analytics above.
     WorkspaceResourceId: logAnalytics.id
     IngestionMode: 'LogAnalytics'
     publicNetworkAccessForIngestion: 'Enabled'
@@ -72,7 +73,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 @description('Resource ID of the Log Analytics workspace.')
 output workspaceId string = logAnalytics.id
 
-@description('Name of the Log Analytics workspace. Used by Container Apps Env to read shared keys.')
+@description('Name of the Log Analytics workspace. The Container Apps Environment uses it to read shared keys.')
 output workspaceName string = logAnalytics.name
 
 @description('Connection string for Application Insights. Used by the application in step 2.')

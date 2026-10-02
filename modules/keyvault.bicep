@@ -1,20 +1,19 @@
 // ============================================================================
-// keyvault.bicep — Key Vault i RBAC-läge
+// keyvault.bicep — Key Vault in RBAC mode
 // ----------------------------------------------------------------------------
-// Vad: Skapar ett Key Vault som lagrar applikationens secrets. RBAC-läge
-//      betyder att åtkomst styrs av Azure RBAC-roller, inte legacy access
-//      policies.
-// Varför: Alla applikationer behöver någonstans att lagra känsliga värden
-//         (API-nycklar till tredjepartstjänster, databaslösenord vid
-//         migration, etc.). Key Vault är standardvalet på Azure.
-// Pedagogisk not: "Purge protection" är permanent när den är på — kan inte
-//                 stängas av. Vi har den AV i den här PoC-templaten så att
-//                 man kan riva ner och deploya om utan att vänta på purge.
-//                 I prod ska den vara PÅ.
+// What: Creates a Key Vault for application secrets. In RBAC mode, access is
+//       controlled by Azure RBAC roles rather than legacy access policies.
+// Why: Every application needs a place to store sensitive values (such as
+//      third-party API keys or database passwords during migration). Key Vault
+//      is the standard choice on Azure.
+// Educational note: Purge protection is permanent once enabled — it cannot be
+//                    disabled. It is intentionally OFF in this PoC template
+//                    so resources can be deleted and redeployed without
+//                    waiting for a purge. Enable it in production.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Key Vault name (3-24 chars, letters/digits/hyphens, must start with a letter).')
@@ -32,7 +31,7 @@ param tags object
 param logAnalyticsWorkspaceId string
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
@@ -45,12 +44,13 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
       name: 'standard'
     }
     tenantId: subscription().tenantId
-    // RBAC-läge — inga access policies. Roller hanteras i modules/rbac.bicep.
+    // RBAC mode — no access policies. Roles are managed in modules/rbac.bicep.
     enableRbacAuthorization: true
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
-    // Avsiktligt AV för demo — vi utelämnar enablePurgeProtection helt så att
-    // riv/omdeploy går smidigt. I prod: sätt enablePurgeProtection: true.
+    // Intentionally OFF for the demo — enablePurgeProtection is omitted to
+    // simplify teardown and redeployment. In production, set
+    // enablePurgeProtection: true.
     publicNetworkAccess: 'Enabled'
     networkAcls: {
       defaultAction: 'Allow'
@@ -86,7 +86,7 @@ resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' 
 @description('Key Vault name.')
 output keyVaultName string = keyVault.name
 
-@description('Key Vault DNS URI, e.g. https://kv-branslefakturor-demo.vault.azure.net/.')
+@description('Key Vault DNS URI, e.g. https://kv-exampleworkload-demo.vault.azure.net/.')
 output keyVaultUri string = keyVault.properties.vaultUri
 
 @description('Key Vault resource ID.')

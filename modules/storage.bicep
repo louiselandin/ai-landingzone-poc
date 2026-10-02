@@ -1,19 +1,18 @@
 // ============================================================================
-// storage.bicep — Storage Account + blob-container "invoices"
+// storage.bicep — Storage Account + "invoices" blob container
 // ----------------------------------------------------------------------------
-// Vad: Skapar ett StorageV2-konto, en blob-tjänst, och en container kallad
-//      "invoices". Skickar all blob-diagnostik till Log Analytics.
-// Varför: De flesta AI-applikationer behöver lagring för dokument, bilder
-//         eller embeddings-källfiler. Vi tvingar Entra-autentisering
-//         (allowSharedKeyAccess = false) så att appen i steg 2 måste använda
-//         sin managed identity — inga "konton-nycklar i appsettings".
-// Pedagogisk not: "Invoices" är ett exempelnamn som matchar "fuelinvoice"-
-//                 demon. I en riktig template skulle container-namnet vara
-//                 en parameter.
+// What: Creates a StorageV2 account, a blob service, and a container named
+//       "invoices". Sends all blob diagnostics to Log Analytics.
+// Why: Most AI applications need storage for documents, images, or embedding
+//      source files. Entra authentication is enforced (allowSharedKeyAccess
+//      = false) so the app in step 2 must use its managed identity — no
+//      "account keys in app settings."
+// Educational note: "invoices" is a generic example. A real template would
+//                    choose a container name specific to the workload.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Globally unique storage account name (3-24 chars, lowercase + digits).')
@@ -34,7 +33,7 @@ param logAnalyticsWorkspaceId string
 param containerName string = 'invoices'
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2024-01-01' = {
@@ -49,12 +48,12 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2024-01-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
-    // Inga delade nycklar — appen MÅSTE autentisera med Entra/Managed Identity.
+    // No shared keys — the app MUST authenticate with Entra/Managed Identity.
     allowSharedKeyAccess: false
     publicNetworkAccess: 'Enabled'
     networkAcls: {
-      // PoC kör öppet. I prod sätter man defaultAction: 'Deny' och vitlistar
-      // Container App-miljöns utgående IP eller använder private endpoints.
+      // The PoC is open. In production, set defaultAction: 'Deny' and allowlist
+      // the Container App Environment's outbound IP, or use private endpoints.
       defaultAction: 'Allow'
       bypass: 'AzureServices'
     }
@@ -62,8 +61,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   }
 }
 
-// Blob-tjänsten är ett "barn" till kontot — den finns alltid implicit, men vi
-// deklarerar den explicit så att vi kan hänga diagnostik och containers på den.
+// The blob service is a child of the account — it always exists implicitly,
+// but is declared explicitly here so diagnostics and containers can be attached.
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' = {
   parent: storageAccount
   name: 'default'
@@ -83,7 +82,7 @@ resource invoicesContainer 'Microsoft.Storage/storageAccounts/blobServices/conta
   }
 }
 
-// Diagnostik — kategorin "allLogs" inkluderar StorageRead/Write/Delete.
+// Diagnostics — the "allLogs" category includes StorageRead/Write/Delete.
 resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: blobService
   name: 'to-loganalytics'

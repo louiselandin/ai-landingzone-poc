@@ -1,19 +1,20 @@
 // ============================================================================
 // containerAppsEnv.bicep — Azure Container Apps Environment
 // ----------------------------------------------------------------------------
-// Vad: Skapar ett managed environment för Container Apps. SJÄLVA Container
-//      App-resursen skapas INTE här — den hör till workload-deployen i steg 2.
-// Varför: Environment:et är den nätverks- och loggdomän som flera Container
-//         Apps kan dela. Vi vill att plattformen äger environment:et så att
-//         appar i steg 2 enkelt kan plugga in i samma logg-pipeline.
-// Pedagogisk not: Vi använder Consumption-only (inga workload profiles).
-//                 Inget VNet — appen får offentliga utgående IPs. För prod
-//                 vill man typiskt köra Workload Profiles + VNet + private
-//                 endpoints till de andra resurserna.
+// What: Creates a managed environment for Container Apps. The Container App
+//       resource itself is NOT created here — it belongs to the workload
+//       deployment in step 2.
+// Why: The environment is the network and logging domain shared by multiple
+//      Container Apps. The platform owns it so apps in step 2 can easily join
+//      the same logging pipeline.
+// Educational note: Uses Consumption only (no workload profiles).
+//                    No VNet — the app gets public outbound IPs. For
+//                    production, Workload Profiles, a VNet, and private
+//                    endpoints to the other resources are typical.
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// Parametrar
+// Parameters
 // ----------------------------------------------------------------------------
 
 @description('Container Apps Environment name.')
@@ -29,18 +30,18 @@ param tags object
 param logAnalyticsWorkspaceName string
 
 // ----------------------------------------------------------------------------
-// Existerande resurser
+// Existing resources
 // ----------------------------------------------------------------------------
-// Vi behöver workspace:ets customerId och primarySharedKey för att koppla
-// app-loggar. Genom att referera till workspace:et som "existing" här slipper
-// vi skicka känsliga keys mellan moduler.
+// The workspace's customerId and primarySharedKey are needed to connect app
+// logs. Referencing the workspace as "existing" here avoids passing sensitive
+// keys between modules.
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsWorkspaceName
 }
 
 // ----------------------------------------------------------------------------
-// Resurser
+// Resources
 // ----------------------------------------------------------------------------
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -55,14 +56,14 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
         sharedKey: logAnalytics.listKeys().primarySharedKey
       }
     }
-    // Endast Consumption-profil — ingen Dedicated/Premium.
+    // Consumption profile only — no Dedicated/Premium.
     workloadProfiles: [
       {
         name: 'Consumption'
         workloadProfileType: 'Consumption'
       }
     ]
-    // Inget VNet — appen är publik. internal:false betyder publikt ingress.
+    // No VNet — the app is public. internal:false means public ingress.
   }
 }
 
@@ -73,5 +74,5 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 @description('Container Apps Environment name.')
 output containerAppsEnvironmentName string = environment.name
 
-@description('Container Apps Environment resource ID — appen i steg 2 refererar till denna.')
+@description('Container Apps Environment resource ID — the app in step 2 references this.')
 output containerAppsEnvironmentId string = environment.id
